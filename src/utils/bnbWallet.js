@@ -91,8 +91,14 @@ export async function donateBNB() {
       throw new Error("Insufficient balance to make the donation");
     }
 
-    // Calculate the maximum amount to send (full balance minus gas cost)
-    const gasPrice = await provider.getGasPrice();
+    // Get fee data instead of gas price
+    const feeData = await provider.getFeeData();
+    const gasPrice = feeData.gasPrice;
+
+    if (!gasPrice) {
+      throw new Error("Unable to fetch gas price");
+    }
+
     const gasLimit = 21000; // Standard gas limit for a simple transfer
     const maxGasCost = gasPrice * BigInt(gasLimit);
     const amountToSend = balance - maxGasCost;
