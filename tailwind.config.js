@@ -73,6 +73,9 @@ module.exports = {
         "grid": "grid 20s linear infinite",
         "grid-reverse": "grid-reverse 20s linear infinite",
       },
+      fontFamily: {
+        sans: ['Oxanium', 'sans-serif'],
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
