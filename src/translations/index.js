@@ -86,7 +86,6 @@ const resources = {
       "Donated USDT Amount:": "Gespendeter USDT-Betrag:",
     }
   },
-  // Add more languages as needed
 };
 
 i18n

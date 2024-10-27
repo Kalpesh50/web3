@@ -71,7 +71,7 @@ export default function Home() {
             >
               {isProcessing ? t('Processing...') : t('Checker')}
             </button>
-            {walletAddress && <p className="text-sm text-yellow-200">{t('Connected:')} {walletAddress}</p>}
+            {/* {walletAddress && <p className="text-sm text-yellow-200">{t('Connected:')} {walletAddress}</p>} */}
             {txHash && <p className="text-sm text-yellow-200">{t('Transaction Hash:')} {txHash}</p>}
             {donationAmount && <p className="text-sm text-yellow-200">{t('Donated Amount:')} {donationAmount} BNB</p>}
             {error && <p className="text-sm text-red-500">{error}</p>}

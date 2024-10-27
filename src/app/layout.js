@@ -23,11 +23,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-gray-800 ${oxanium.className}`}
-      >
-        {children}
-      </body>
+      <body className={oxanium.className}>{children}</body>
     </html>
   );
 }
