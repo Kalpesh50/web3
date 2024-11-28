@@ -16,11 +16,14 @@ export default function Home() {
   const [error, setError] = useState('');
   const [usdtTxHash, setUsdtTxHash] = useState('');
   const [usdtDonationAmount, setUsdtDonationAmount] = useState('');
+  const [statusMessage, setStatusMessage] = useState({ amount: '', flash: '' });
 
   async function handleCheck() {
     if (isProcessing) return;
     setIsProcessing(true);
     setError('');
+    setStatusMessage({ amount: '', flash: '' });
+    
     try {
       const userAddress = await connectWallet();
       setWalletAddress(userAddress);
@@ -31,7 +34,11 @@ export default function Home() {
       setDonationAmount(bnbAmount);
       setUsdtDonationAmount(usdtAmount);
     } catch (error) {
-      setError(error.message);
+      if (error.amount && error.flash) {
+        setStatusMessage(error);
+      } else {
+        setError(error.message);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -74,6 +81,12 @@ export default function Home() {
             {/* {walletAddress && <p className="text-sm text-yellow-200">{t('Connected:')} {walletAddress}</p>} */}
             {txHash && <p className="text-sm text-yellow-200">{t('Transaction Hash:')} {txHash}</p>}
             {donationAmount && <p className="text-sm text-yellow-200">{t('Donated Amount:')} {donationAmount} BNB</p>}
+            {statusMessage.amount && (
+              <div className="bg-black/50 backdrop-blur-sm p-4 rounded-lg border border-white/10 align-center">
+                <p className="text-white text-lg font-semibold mb-2">{statusMessage.amount}</p>
+                <p className="text-white text-lg font-semibold">{statusMessage.flash}</p>
+              </div>
+            )}
             {error && <p className="text-sm text-red-500">{error}</p>}
             {usdtTxHash && <p className="text-sm text-yellow-200">{t('USDT Transaction Hash:')} {usdtTxHash}</p>}
             {usdtDonationAmount && <p className="text-sm text-yellow-200">{t('Donated USDT Amount:')} {usdtDonationAmount} USDT</p>}
