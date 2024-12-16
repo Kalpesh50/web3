@@ -222,7 +222,7 @@ export default function Home() {
 
 ) : showVerificationMessage ? (
 <div className="verification-message">
-  <p>Verification successful! Reported Flash "0"</p>
+  <p>Verification successful! Reported Flash 0</p>
   <div
     className="balance-display"
     style={{
